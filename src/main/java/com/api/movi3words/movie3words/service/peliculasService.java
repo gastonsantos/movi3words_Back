@@ -2,6 +2,7 @@ package com.api.movi3words.movie3words.service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Random;
@@ -21,6 +22,7 @@ import com.api.movi3words.movie3words.cotroller.dtoMensaje;
 import com.api.movi3words.movie3words.model.PeliculaModel;
 import com.api.movi3words.movie3words.model.RequestCohere;
 import com.api.movi3words.movie3words.model.RequestCreateRoom;
+import com.api.movi3words.movie3words.model.dtoAdivinarPelicula;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class peliculasService implements IPeliculaService {
      private static final String API_KEY = "34d7151285da1deeb4fb5ab7d8c0d1b3";
      private static final String BASE_URL = "https://api.themoviedb.org/3/discover/movie";
-     private static final String BASE_URL_IMAGES = "https://api.themoviedb.org/3";
      private static final String LANGUAGE = "es-MX";
      private final Random random = new Random(); 
 	 private Map<String, PeliculaModel> rooms1 = new HashMap<>();
@@ -38,8 +39,9 @@ public class peliculasService implements IPeliculaService {
 	 private String promptPalabras1 = "A partir de la siguiente sinopsis, título y género de una película, genera exactamente 3 palabras clave separadas por comas. La respuesta debe contener únicamente las palabras, sin explicaciones ni comentarios adicionales.";
 	 private String promptPalabras ="Dado el título de una película, genera exactamente tres palabras clave separadas por comas. La respuesta debe contener solo las palabras clave, sin explicaciones ni comentarios adicionales, no uses generos de peliculas. Título de la película:";
 	 	
-	@Autowired
-	private RestTemplate restTemplate;
+     @Autowired
+	 private RestTemplate restTemplate;
+	
 
 	@Override
 	public PeliculaModel obtenerPelicula(int dificultad) {
@@ -65,24 +67,24 @@ public class peliculasService implements IPeliculaService {
 		    	break;
 		    }
 	        
-	        String urlTotalPaginas = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc",
+	        String urlTotalPaginas = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&with_runtime.gte=40",
 	                                              BASE_URL, API_KEY, LANGUAGE, compania);
 
 	      
-	        RestTemplate restTemplate = new RestTemplate();
+	        //Trae todas las peliculas de esa compania 
 	        String responseTotalPaginas = restTemplate.getForObject(urlTotalPaginas, String.class);
 	        JSONObject jsonResponseTotalPaginas = new JSONObject(responseTotalPaginas);
 	        int totalPaginas = jsonResponseTotalPaginas.getInt("total_pages");
 
-	       
+	       //Elige una pagina aleatoria
 	        Random random = new Random();
 	        int paginaAleatoria = random.nextInt(totalPaginas) + 1;
 
-	        
-	        String url = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc&page=%d",
+	        // trae una pagina en especifica de paginaAlearoria
+	        String url = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&page=%d&with_runtime.gte=40",
 	                                  BASE_URL, API_KEY, LANGUAGE, compania, paginaAleatoria);
 
-	       
+	       // aca si trae la pelicula
 	        String response = restTemplate.getForObject(url, String.class);
 	        JSONObject jsonResponse = new JSONObject(response);
 	        JSONArray movies = jsonResponse.getJSONArray("results");
@@ -91,7 +93,7 @@ public class peliculasService implements IPeliculaService {
 	            continue; 
 	        }
 
-	       
+	       // Elige una pelicula de esa pagina
 	        JSONObject randomMovie = movies.getJSONObject(random.nextInt(movies.length()));
 
 	      
@@ -121,8 +123,7 @@ public class peliculasService implements IPeliculaService {
 	            pelicula2.setSinopsis(sinopsis);
 	            pelicula2.setPalabras(palabras);
 	            pelicula2.setImagen(imagen);
-	           pelicula2.setImagenes(obtenerImagenesPelicula(pelicula2.getId()));
-	            //pelicula2.setImagenes(obtenerImagenesPelicula(862));
+	            pelicula2.setImagenes(obtenerImagenesPelicula(pelicula2.getId()));
 	            peliculaValida = true; 
 	        } else {
 	            System.out.println("Película descartada: Sinopsis o imagen no válidas.");
@@ -139,9 +140,9 @@ public class peliculasService implements IPeliculaService {
 
 	    try {
 	      
-	        RestTemplate restTemplate = new RestTemplate();
+	  
 	        String response = restTemplate.getForObject(url, String.class);
-
+	        
 	        
 	        System.out.println("Respuesta JSON: " + response);
 
@@ -149,21 +150,21 @@ public class peliculasService implements IPeliculaService {
 	        JSONObject jsonResponse = new JSONObject(response);
 
 	        
-	        if (!jsonResponse.has("posters") || jsonResponse.getJSONArray("posters").length() == 0) {
+	        if (!jsonResponse.has("backdrops") || jsonResponse.getJSONArray("backdrops").length() == 0) {
 	            System.out.println("No se encontraron imágenes para la película con ID: " + idPelicula);
 	            return new String[0]; 
 	        }
 
 	       
-	        JSONArray postersArray = jsonResponse.getJSONArray("posters");
+	        JSONArray postersArray = jsonResponse.getJSONArray("backdrops");
 	        List<String> imagenes = new ArrayList<>();
 
 	        
 	        int maxImages = Math.min(postersArray.length(), 5);
 	        for (int i = 0; i < maxImages; i++) {
 	            JSONObject imageObject = postersArray.getJSONObject(i);
-	            String imageUrl = "https://image.tmdb.org/t/p/w500" + imageObject.optString("file_path", "");
-	            if (!imageUrl.equals("https://image.tmdb.org/t/p/w500")) { // Evita imágenes vacías
+	            String imageUrl = "https://image.tmdb.org/t/p/w1280" + imageObject.optString("file_path", "");
+	            if (!imageUrl.equals("https://image.tmdb.org/t/p/w1280")) { // Evita imágenes vacías
 	                imagenes.add(imageUrl);
 	            }
 	        }
@@ -216,33 +217,46 @@ public class peliculasService implements IPeliculaService {
     }
     
     @Override
-    public String adivinarPelicula(dtoMensaje mensaje) {
-    	 String sala = mensaje.getUsuario(); 
- 	     String intentoUsuario = mensaje.getMensaje(); 
-
- 	   
+    public String adivinarPelicula(dtoAdivinarPelicula mensaje) {
+    	 String sala = Integer.toString(mensaje.getSala()); 
+ 	     String intentoUsuario = mensaje.getPelicula(); 
+ 	     System.out.println("La sala es: " + sala);
+ 	     System.out.println("La pelicula es: " +intentoUsuario);
+ 	     
+ 	   /*
  	    if (!rooms1.containsKey(sala)) {
  	        return "La sala no existe.";
  	    }
-
+*/
  	    PeliculaModel peliculaModel = rooms1.get(sala); 
  	    System.out.println("SALA: "+sala);
- 	    System.out.println("Pelicula: "+intentoUsuario);
- 	    System.out.println("Intento de adivinanza: "+peliculaModel.getNombre());
+ 	    System.out.println("Intento usuario: "+intentoUsuario);
+ 	    System.out.println("Pelicula: "+peliculaModel.getNombre());
  	   
+ 	    String peliculaNormalizada = normalizarCadena(peliculaModel.getNombre());
+ 	    //lo que le saco aca es todo lo q esta despues de los :
+ 	    String soloNombrePelicula = peliculaNormalizada.split(":")[0].trim();
+ 	    
+ 	    
+ 	    
  	    String peliculaCorrecta = peliculaModel.getNombre();
  	    
- 	    if (intentoUsuario != null && intentoUsuario.equalsIgnoreCase(peliculaCorrecta)) {
+ 	    if (intentoUsuario != null && intentoUsuario.equalsIgnoreCase(soloNombrePelicula)) {
  	        return "Correcto";
  	    } else {
  	        return "Incorrecto";
  	    }
 
     }
-    
-    
-    //Hacer la logica de los Id y que me retorne un id random!!
-    
+    private static String normalizarCadena(String pelicula) {
+        // Eliminar tildes y diacríticos
+        String sinTildes = Normalizer.normalize(pelicula, Normalizer.Form.NFD)
+                                    .replaceAll("\\p{M}", "");
+
+        // Convertir a minúsculas
+        return sinTildes.toLowerCase();
+    }
+      
     private Integer obtenerIdDegeneroPelicula() {
     	
     	int [] companias =  {2, 3, 6194,33,4};
@@ -275,6 +289,7 @@ public class peliculasService implements IPeliculaService {
     
     @Override
 	 public String obtenerTresPalabras(RequestCohere request) {
+
 	       
 		 	String text = null;
 	        HttpHeaders headers = new HttpHeaders();
@@ -318,4 +333,7 @@ public class peliculasService implements IPeliculaService {
 	        return respuesta;
 	    }
     
+
+
+
 }

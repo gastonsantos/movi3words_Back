@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.api.movi3words.movie3words.model.PeliculaModel;
 import com.api.movi3words.movie3words.model.RequestCambiarPelicual;
+import com.api.movi3words.movie3words.model.RequestCreateRoom;
+import com.api.movi3words.movie3words.model.dtoAdivinarPelicula;
+import com.api.movi3words.movie3words.model.dtoDificultad;
 import com.api.movi3words.movie3words.service.IPeliculaService;
 
 
@@ -52,5 +55,22 @@ public class peliculasController {
 		  System.out.println("Sala de Controller:  " +IdRoom.getIdRoom());
 			return  _peliculaService.cambiarPelicula(IdRoom.getIdRoom(), IdRoom.getDificultad());
 		}
+	  
+	  @PostMapping(value="/crearSala")
+	  @CrossOrigin(origins = "*", allowedHeaders = "*")
+		public RequestCreateRoom crearSala(@RequestBody dtoDificultad dificultad) {
+		  
+			return  _peliculaService.crearSala(dificultad.getDificultad());
+		}
+	  
+	  @PostMapping(value="/adivinarPelicula")
+	  @CrossOrigin(origins = "*", allowedHeaders = "*")
+	    public String adivinarPelicula(@RequestBody dtoAdivinarPelicula adivinar) {
+	    	    System.out.println("Sala: " + adivinar.getSala());
+	    	    System.out.println("Intento de adivinanza: " + adivinar.getPelicula());
+
+	    	    return _peliculaService.adivinarPelicula(adivinar);
+
+	    }
 	
 }

@@ -43,10 +43,22 @@
 		
 		<!-- Lombok -->
 		<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <scope>provided</scope>
-</dependency>
+       <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <scope>provided</scope>
+        </dependency>
+
+    <!-- Otras dependencias -->
+
+   
+
+    <!-- Mockito -->
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <version>5.5.0</version>
+        <scope>test</scope>
+    </dependency>
 
 <dependency>
     <groupId>org.json</groupId>
@@ -119,6 +131,9 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				   <configuration>
+                <argLine>-Xshare:off</argLine>
+            </configuration>
 			</plugin>
 		</plugins>
 	</build>

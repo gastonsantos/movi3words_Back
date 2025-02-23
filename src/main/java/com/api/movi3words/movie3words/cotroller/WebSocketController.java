@@ -41,7 +41,7 @@ public class WebSocketController {
 		 		System.out.println("El nivel de dificultad es: "+dificultad);
 	        return _peliculasService.crearSala(dificultad);
 	    }
-
+/*
 	    @MessageMapping("/joinRoom")
 	    @SendTo("/topic/guessResult")
 	    public String joinRoom(dtoMensaje mensaje) {
@@ -51,5 +51,6 @@ public class WebSocketController {
 	    	    return _peliculasService.adivinarPelicula(mensaje);
 
 	    }
+	    */
 }
 
