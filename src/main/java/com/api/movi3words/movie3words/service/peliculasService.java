@@ -50,81 +50,21 @@ public class peliculasService implements IPeliculaService {
 
 	  
 	    do {
-	        int compania=0;
-	        switch(dificultad) {
-		    case 1: 
-		    	 compania = obtenerIdDegeneroPeliculaInfantil();
-		    	break;
-		    case 2:
-		    	compania = obtenerIdDegeneroPelicula();
-		    	break;
-		    case 3: 
-		    	compania = obtenerIdDegeneroPeliculasDificil();
-		    	break;
-		    default:
-		    	compania= obtenerIdDegeneroPeliculaInfantil();
-		    	System.out.println("No entro ningun numero valido");
-		    	break;
-		    }
-	        
-	        String urlTotalPaginas = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&with_runtime.gte=40",
-	                                              BASE_URL, API_KEY, LANGUAGE, compania);
+	        Integer paginaAleatoria = devuelvePaginaAleatoria(devuelveCompania(dificultad));
 
+	        JSONObject randomMovie = devuelvePeliculaEnJson(devuelveCompania(dificultad), paginaAleatoria);
 	      
-	        //Trae todas las peliculas de esa compania 
-	        String responseTotalPaginas = restTemplate.getForObject(urlTotalPaginas, String.class);
-	        JSONObject jsonResponseTotalPaginas = new JSONObject(responseTotalPaginas);
-	        int totalPaginas = jsonResponseTotalPaginas.getInt("total_pages");
 
-	       //Elige una pagina aleatoria
-	        Random random = new Random();
-	        int paginaAleatoria = random.nextInt(totalPaginas) + 1;
-
-	        // trae una pagina en especifica de paginaAlearoria
-	        String url = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&page=%d&with_runtime.gte=40",
-	                                  BASE_URL, API_KEY, LANGUAGE, compania, paginaAleatoria);
-
-	       // aca si trae la pelicula
-	        String response = restTemplate.getForObject(url, String.class);
-	        JSONObject jsonResponse = new JSONObject(response);
-	        JSONArray movies = jsonResponse.getJSONArray("results");
-
-	        if (movies.length() == 0) {
-	            continue; 
-	        }
-
-	       // Elige una pelicula de esa pagina
-	        JSONObject randomMovie = movies.getJSONObject(random.nextInt(movies.length()));
-
-	      
-	        String nombre = randomMovie.getString("title");
-	        String sinopsis = randomMovie.optString("overview", ""); // Si no hay sinopsis, se asigna una cadena vacía
-	        String imagen = "https://image.tmdb.org/t/p/w500" + randomMovie.optString("poster_path", "");
-
-	        int idPelicula = randomMovie.getInt("id");
-	        String idPeliculaString = String.valueOf(idPelicula);
-
-	        
-	        String genero = "";
-	        if (randomMovie.has("genre_ids") && randomMovie.getJSONArray("genre_ids").length() > 0) {
-	            genero = obtenerNombreGenero(randomMovie.getJSONArray("genre_ids").getInt(0));
-	        }
-
-	     
-	        RequestCohere requestCohere = new RequestCohere(nombre, genero, sinopsis);
+	        pelicula2 = devuelveLaPeliculaEnPeliculaModel(randomMovie); 
+	        RequestCohere requestCohere = new RequestCohere(pelicula2.getNombre(), pelicula2.getGenero(), pelicula2.getSinopsis());
 	        String palabras = obtenerTresPalabras(requestCohere);
 
 	        
-	        if (!sinopsis.isEmpty() && !imagen.isEmpty()) {
-	            System.out.println("Película encontrada: " + idPeliculaString + " " + nombre + " " + sinopsis + " " + palabras);
-	            pelicula2.setId(idPelicula);
-	            pelicula2.setGenero(genero);
-	            pelicula2.setNombre(nombre);
-	            pelicula2.setSinopsis(sinopsis);
+	        if (!pelicula2.getSinopsis().isEmpty() && !pelicula2.getImagen().isEmpty()) {
 	            pelicula2.setPalabras(palabras);
-	            pelicula2.setImagen(imagen);
 	            pelicula2.setImagenes(obtenerImagenesPelicula(pelicula2.getId()));
 	            peliculaValida = true; 
+	            System.out.println("La Movie es:"+pelicula2.getId() +" "+pelicula2.getNombre()+" "+pelicula2.getSinopsis());
 	        } else {
 	            System.out.println("Película descartada: Sinopsis o imagen no válidas.");
 	        }
@@ -144,9 +84,6 @@ public class peliculasService implements IPeliculaService {
 	        String response = restTemplate.getForObject(url, String.class);
 	        
 	        
-	        System.out.println("Respuesta JSON: " + response);
-
-	        
 	        JSONObject jsonResponse = new JSONObject(response);
 
 	        
@@ -161,6 +98,7 @@ public class peliculasService implements IPeliculaService {
 
 	        
 	        int maxImages = Math.min(postersArray.length(), 5);
+	        
 	        for (int i = 0; i < maxImages; i++) {
 	            JSONObject imageObject = postersArray.getJSONObject(i);
 	            String imageUrl = "https://image.tmdb.org/t/p/w1280" + imageObject.optString("file_path", "");
@@ -203,7 +141,7 @@ public class peliculasService implements IPeliculaService {
     }
     @Override
     public PeliculaModel cambiarPelicula(String idRoom, int dificultad) {
-    	 System.out.println("Entra a Cambiar Pelicual");
+    	 
     	
     	 PeliculaModel pelicula = obtenerPelicula(dificultad);
    
@@ -219,26 +157,20 @@ public class peliculasService implements IPeliculaService {
     @Override
     public String adivinarPelicula(dtoAdivinarPelicula mensaje) {
     	 String sala = Integer.toString(mensaje.getSala()); 
- 	     String intentoUsuario = mensaje.getPelicula(); 
- 	     System.out.println("La sala es: " + sala);
- 	     System.out.println("La pelicula es: " +intentoUsuario);
+ 	     String intentoUsuario = mensaje.getPelicula(); 	 
  	     
  	   /*
  	    if (!rooms1.containsKey(sala)) {
  	        return "La sala no existe.";
  	    }
-*/
+       */
  	    PeliculaModel peliculaModel = rooms1.get(sala); 
- 	    System.out.println("SALA: "+sala);
- 	    System.out.println("Intento usuario: "+intentoUsuario);
- 	    System.out.println("Pelicula: "+peliculaModel.getNombre());
+ 	 
  	   
  	    String peliculaNormalizada = normalizarCadena(peliculaModel.getNombre());
  	    //lo que le saco aca es todo lo q esta despues de los :
  	    String soloNombrePelicula = peliculaNormalizada.split(":")[0].trim();
- 	    
- 	    
- 	    
+ 	   
  	    String peliculaCorrecta = peliculaModel.getNombre();
  	    
  	    if (intentoUsuario != null && intentoUsuario.equalsIgnoreCase(soloNombrePelicula)) {
@@ -333,7 +265,93 @@ public class peliculasService implements IPeliculaService {
 	        return respuesta;
 	    }
     
+    
+    public int devuelveCompania(Integer dificultad) {
+    	int compania=0;
+        switch(dificultad) {
+	    case 1: 
+	    	 compania = obtenerIdDegeneroPeliculaInfantil();
+	    	break;
+	    case 2:
+	    	compania = obtenerIdDegeneroPelicula();
+	    	break;
+	    case 3: 
+	    	compania = obtenerIdDegeneroPeliculasDificil();
+	    	break;
+	    default:
+	    	compania= obtenerIdDegeneroPeliculaInfantil();
+	    	System.out.println("No entro ningun numero valido");
+	    	break;
+	    }
+        return compania;
+    }
+    public int devuelvePaginaAleatoria(Integer compania) {
+    
+        String urlTotalPaginas = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&with_runtime.gte=40",
+                                              BASE_URL, API_KEY, LANGUAGE, compania);
 
+      
+        //Trae todas las peliculas de esa compania 
+        String responseTotalPaginas = restTemplate.getForObject(urlTotalPaginas, String.class);
+        JSONObject jsonResponseTotalPaginas = new JSONObject(responseTotalPaginas);
+        int totalPaginas = jsonResponseTotalPaginas.getInt("total_pages");
 
+       //Elige una pagina aleatoria
+        Random random = new Random();
+         int paginaAleatoria = random.nextInt(totalPaginas) + 1;
+         
+         return paginaAleatoria;
+    }
 
+    
+    public JSONObject devuelvePeliculaEnJson(Integer compania, Integer paginaAleatoria) {
+    	boolean encontro= false;
+    	JSONObject pelicula = new JSONObject();
+    	do {
+    		 String url = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&page=%d&with_runtime.gte=40",
+                     BASE_URL, API_KEY, LANGUAGE, compania, paginaAleatoria);
+    		 
+    		 	String response = restTemplate.getForObject(url, String.class);
+    		 	JSONObject jsonResponse = new JSONObject(response);
+    		 	JSONArray movies = jsonResponse.getJSONArray("results");
+    		 	
+ 
+    		 	
+    		 	if(movies!= null && movies.length()>0) {
+    		 		encontro = true;
+    		 		pelicula =  movies.getJSONObject(random.nextInt(movies.length()));
+    		 		System.out.println("LA PELICULA ES: "+pelicula);
+    		 	}
+    		 	
+            	
+    		} while(!encontro) ;
+        	
+       
+        	return pelicula;
+    }
+    
+    public PeliculaModel devuelveLaPeliculaEnPeliculaModel(JSONObject randomMovie) {
+    	  PeliculaModel pelicula2 = new PeliculaModel();
+    	
+    	  String nombre = randomMovie.getString("title");
+	        String sinopsis = randomMovie.optString("overview", ""); // Si no hay sinopsis, se asigna una cadena vacía
+	        String imagen = "https://image.tmdb.org/t/p/w500" + randomMovie.optString("poster_path", "");
+
+	        int idPelicula = randomMovie.getInt("id");
+	        String idPeliculaString = String.valueOf(idPelicula);
+
+	        
+	        String genero = "";
+	        if (randomMovie.has("genre_ids") && randomMovie.getJSONArray("genre_ids").length() > 0) {
+	            genero = obtenerNombreGenero(randomMovie.getJSONArray("genre_ids").getInt(0));
+	        }
+	        pelicula2.setGenero(genero);
+	        pelicula2.setId(idPelicula);
+	        pelicula2.setImagen(imagen);
+	        pelicula2.setNombre(nombre);
+	        pelicula2.setSinopsis(sinopsis);
+	        
+    	return pelicula2;
+    }
 }
+    
