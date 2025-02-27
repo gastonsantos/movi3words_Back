@@ -1,4 +1,4 @@
-package com.api.movi3words.movie3words.cotroller;
+package com.api.movi3words.movie3words.model;
 
 
 public class dtoMensaje {

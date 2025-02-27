@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 
 import com.api.movi3words.movie3words.model.PeliculaModel;
 import com.api.movi3words.movie3words.model.RequestCreateRoom;
+import com.api.movi3words.movie3words.model.dtoMensaje;
 import com.api.movi3words.movie3words.service.IPeliculaService;
 
 import ch.qos.logback.core.recovery.ResilientSyslogOutputStream;

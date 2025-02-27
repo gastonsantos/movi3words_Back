@@ -22,12 +22,12 @@ import com.api.movi3words.movie3words.service.IPeliculaService;
 
 @RestController
 @RequestMapping("api/pelicula")
-public class peliculasController {
+public class PeliculasController {
 
 	@Autowired
 	private IPeliculaService _peliculaService;
 	
-	public peliculasController(IPeliculaService _peliculaService) {
+	public PeliculasController(IPeliculaService _peliculaService) {
 		this._peliculaService = _peliculaService;
 	}
 	  /*

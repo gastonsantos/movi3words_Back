@@ -18,17 +18,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.api.movi3words.movie3words.cotroller.dtoMensaje;
+import com.api.movi3words.movie3words.exception.ImagenesNoEncontradaExcepcion;
+import com.api.movi3words.movie3words.exception.PeliculaNoEncontradaException;
+import com.api.movi3words.movie3words.exception.SalaNoEncontradaException;
 import com.api.movi3words.movie3words.model.PeliculaModel;
 import com.api.movi3words.movie3words.model.RequestCohere;
 import com.api.movi3words.movie3words.model.RequestCreateRoom;
 import com.api.movi3words.movie3words.model.dtoAdivinarPelicula;
+import com.api.movi3words.movie3words.model.dtoMensaje;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
-public class peliculasService implements IPeliculaService {
+public class PeliculasService implements IPeliculaService {
      private static final String API_KEY = "34d7151285da1deeb4fb5ab7d8c0d1b3";
      private static final String BASE_URL = "https://api.themoviedb.org/3/discover/movie";
      private static final String LANGUAGE = "es-MX";
@@ -39,7 +42,9 @@ public class peliculasService implements IPeliculaService {
 	 private String promptPalabras1 = "A partir de la siguiente sinopsis, título y género de una película, genera exactamente 3 palabras clave separadas por comas. La respuesta debe contener únicamente las palabras, sin explicaciones ni comentarios adicionales.";
 	 private String promptPalabras ="Dado el título de una película, genera exactamente tres palabras clave separadas por comas. La respuesta debe contener solo las palabras clave, sin explicaciones ni comentarios adicionales, no uses generos de peliculas. Título de la película:";
 	 	
-     @Autowired
+ 
+
+	@Autowired
 	 private RestTemplate restTemplate;
 	
 
@@ -50,15 +55,15 @@ public class peliculasService implements IPeliculaService {
 
 	  
 	    do {
-	        Integer paginaAleatoria = devuelvePaginaAleatoria(devuelveCompania(dificultad));
+	    	Integer idCompania = devuelveCompania(dificultad) ;
+	        Integer paginaAleatoria = devuelvePaginaAleatoria(idCompania);
 
-	        JSONObject randomMovie = devuelvePeliculaEnJson(devuelveCompania(dificultad), paginaAleatoria);
-	      
-
+	        JSONObject randomMovie = devuelvePeliculaEnJson(idCompania, paginaAleatoria);
+	     
 	        pelicula2 = devuelveLaPeliculaEnPeliculaModel(randomMovie); 
 	        RequestCohere requestCohere = new RequestCohere(pelicula2.getNombre(), pelicula2.getGenero(), pelicula2.getSinopsis());
 	        String palabras = obtenerTresPalabras(requestCohere);
-
+	        
 	        
 	        if (!pelicula2.getSinopsis().isEmpty() && !pelicula2.getImagen().isEmpty()) {
 	            pelicula2.setPalabras(palabras);
@@ -112,7 +117,8 @@ public class peliculasService implements IPeliculaService {
 
 	    } catch (Exception e) {
 	        System.out.println("Error obteniendo imágenes: " + e.getMessage());
-	        return new String[0];
+	       // return new String[0];
+	        throw new ImagenesNoEncontradaExcepcion();
 	    }
 	}
 
@@ -130,42 +136,72 @@ public class peliculasService implements IPeliculaService {
     
     @Override
     public RequestCreateRoom crearSala(int dificultad) {
-    	    String roomId = String.valueOf(random.nextInt(1000));
-	        PeliculaModel pelicula = obtenerPelicula(dificultad);
-	        
-	        rooms1.put(roomId, pelicula);
+    	   
+	        String roomId;
+	        do {
+	            roomId = String.valueOf(random.nextInt(1000)); 
+	        } while (rooms1.containsKey(roomId)); 
 	        RequestCreateRoom dto = new RequestCreateRoom();
-	        dto.setSala(roomId);
-	        dto.setPelicula(pelicula);
+	       
+	        PeliculaModel pelicula = obtenerPelicula(dificultad);
+	        rooms1.put(roomId, pelicula);
+		    dto.setSala(roomId);
+		    dto.setPelicula(pelicula);        
+	        
 	        return dto;        	
     }
+    
     @Override
     public PeliculaModel cambiarPelicula(String idRoom, int dificultad) {
-    	 
+    	PeliculaModel peliculaQueRetorna = null ;
     	
-    	 PeliculaModel pelicula = obtenerPelicula(dificultad);
-   
-  
-    	 rooms1.put(idRoom, pelicula);
-    	 PeliculaModel pelicula2 = rooms1.get(idRoom);
-    	 System.out.println("La Sala es: "+idRoom);
-    	 System.out.println("La nueva pelicula es: " + pelicula2.getNombre());
-    	 return pelicula;
-    	  
+    	if(buscarSala(idRoom)) {
+    		Boolean mismaPeli= true;
+    	
+    		PeliculaModel peliculaDeLaSala = rooms1.get(idRoom);
+    		do {   
+    			   PeliculaModel pelicula = obtenerPelicula(dificultad);
+    			   if(!peliculaDeLaSala.getNombre().equals(pelicula.getNombre()))
+    			   {
+    				   mismaPeli = false;
+    				   agregarSala(idRoom,pelicula);
+    				   peliculaQueRetorna = pelicula;
+    				  break;
+    			     }
+    			   
+    		}while(mismaPeli == true);
+    		return peliculaQueRetorna;
+    	}
+    	return null;	  
     }
+    
+    	
+    public void agregarSala(String idRoom, PeliculaModel pelicula) {
+        rooms1.put(idRoom, pelicula);
+    }
+    
+    public Boolean buscarSala(String idRoom) {
+    	if(!rooms1.containsKey(idRoom)) {
+    		throw new SalaNoEncontradaException();
+    	}
+    	return true;
+    }
+
     
     @Override
     public String adivinarPelicula(dtoAdivinarPelicula mensaje) {
     	 String sala = Integer.toString(mensaje.getSala()); 
  	     String intentoUsuario = mensaje.getPelicula(); 	 
  	     
- 	   /*
+ 	   
  	    if (!rooms1.containsKey(sala)) {
- 	        return "La sala no existe.";
+ 	    	throw new SalaNoEncontradaException();
  	    }
-       */
+       
  	    PeliculaModel peliculaModel = rooms1.get(sala); 
- 	 
+ 	    if(peliculaModel.equals(null) ) {
+ 	    	throw new PeliculaNoEncontradaException();
+ 	    }
  	   
  	    String peliculaNormalizada = normalizarCadena(peliculaModel.getNombre());
  	    //lo que le saco aca es todo lo q esta despues de los :
@@ -180,7 +216,7 @@ public class peliculasService implements IPeliculaService {
  	    }
 
     }
-    private static String normalizarCadena(String pelicula) {
+    protected static String normalizarCadena(String pelicula) {
         // Eliminar tildes y diacríticos
         String sinTildes = Normalizer.normalize(pelicula, Normalizer.Form.NFD)
                                     .replaceAll("\\p{M}", "");
@@ -189,7 +225,7 @@ public class peliculasService implements IPeliculaService {
         return sinTildes.toLowerCase();
     }
       
-    private Integer obtenerIdDegeneroPelicula() {
+    protected Integer obtenerIdDegeneroPelicula() {
     	
     	int [] companias =  {2, 3, 6194,33,4};
     	Random random = new Random();
@@ -199,7 +235,7 @@ public class peliculasService implements IPeliculaService {
     	return companiaAleatoria;
     }
     
-    private Integer obtenerIdDegeneroPeliculaInfantil() {
+    protected Integer obtenerIdDegeneroPeliculaInfantil() {
     	
     	int [] companias =  {2,3};
     	Random random = new Random();
@@ -208,7 +244,7 @@ public class peliculasService implements IPeliculaService {
         System.out.println("Compania elegida"+ companiaAleatoria);
     	return companiaAleatoria;
     }
-    private Integer obtenerIdDegeneroPeliculasDificil() {
+    protected Integer obtenerIdDegeneroPeliculasDificil() {
     	int[] companias = {2, 3, 6194, 33, 4, 25, 5, 420, 521, 1632};
     
     	Random random = new Random();
@@ -266,7 +302,7 @@ public class peliculasService implements IPeliculaService {
 	    }
     
     
-    public int devuelveCompania(Integer dificultad) {
+    protected int devuelveCompania(Integer dificultad) {
     	int compania=0;
         switch(dificultad) {
 	    case 1: 
@@ -285,7 +321,7 @@ public class peliculasService implements IPeliculaService {
 	    }
         return compania;
     }
-    public int devuelvePaginaAleatoria(Integer compania) {
+    protected int devuelvePaginaAleatoria(Integer compania) {
     
         String urlTotalPaginas = String.format("%s?api_key=%s&language=%s&with_companies=%d&sort_by=popularity.desc,vote_average.desc&with_runtime.gte=40",
                                               BASE_URL, API_KEY, LANGUAGE, compania);
@@ -304,7 +340,7 @@ public class peliculasService implements IPeliculaService {
     }
 
     
-    public JSONObject devuelvePeliculaEnJson(Integer compania, Integer paginaAleatoria) {
+    protected JSONObject devuelvePeliculaEnJson(Integer compania, Integer paginaAleatoria) {
     	boolean encontro= false;
     	JSONObject pelicula = new JSONObject();
     	do {
@@ -330,7 +366,7 @@ public class peliculasService implements IPeliculaService {
         	return pelicula;
     }
     
-    public PeliculaModel devuelveLaPeliculaEnPeliculaModel(JSONObject randomMovie) {
+    protected PeliculaModel devuelveLaPeliculaEnPeliculaModel(JSONObject randomMovie) {
     	  PeliculaModel pelicula2 = new PeliculaModel();
     	
     	  String nombre = randomMovie.getString("title");
