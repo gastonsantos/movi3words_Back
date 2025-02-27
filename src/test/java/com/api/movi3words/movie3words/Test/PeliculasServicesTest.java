@@ -49,7 +49,6 @@ class PeliculasServicesTest {
 	
 	 @Mock
 	 private Random random;
-	
 
 	  @BeforeEach
 	    void setUp() {
@@ -93,8 +92,7 @@ class PeliculasServicesTest {
 			 String valorObtenido = _peliculaService.adivinarPelicula(dtoAdivinarPelicula);
 			 
 			assertEquals("Incorrecto", valorObtenido);
-			
-		    //Verificamos que el mocK se llamo solo una vez
+		
 			verify(_peliculaService, times(1)).adivinarPelicula(dtoAdivinarPelicula);
 	    }
 	    
@@ -227,6 +225,7 @@ class PeliculasServicesTest {
 	    @Test
 	    public void testQueCambiaDePelicula() {
 	    	//Preparo los datos de entrada
+	    	
 	    	 Integer dificultad= 1;
 	    	 String idRoom = "123";
 	    	 
@@ -237,19 +236,19 @@ class PeliculasServicesTest {
 	    	 peliculaEnSala.setId(200);
 	    	 peliculaEnSala.setGenero("Genero");
 	    	 
-	    	 peliculaService.agregarSala(idRoom, peliculaEnSala);
-	    	 
+	    
 	    	 PeliculaModel peliculaQuecambia = new PeliculaModel();
 	    	 peliculaQuecambia.setNombre("Pelicula1");
 	    	 peliculaQuecambia.setId(201);
 	    	 peliculaQuecambia.setGenero("Genero");
-	    	
 	    	 
-	    	// when(_peliculaService.obtenerPelicula(dificultad)).thenReturn(peliculaQuecambia);
+	    	 peliculaService.agregarSala(idRoom, peliculaEnSala);
+	    	 
              when(_peliculaService.cambiarPelicula(idRoom,dificultad)).thenReturn(peliculaQuecambia);
-             //PeliculaModel peliculaReal = peliculaService.obtenerPelicula(dificultad);
+             
              
              PeliculaModel pelicula1 = _peliculaService.cambiarPelicula(idRoom,dificultad);
+             
              assertEquals(peliculaQuecambia.getNombre(), pelicula1.getNombre());
              assertNotEquals(peliculaEnSala.getNombre(), pelicula1.getNombre() );
              
@@ -265,21 +264,14 @@ class PeliculasServicesTest {
 	    	 peliculaEnSala.setNombre("Pelicula");
 	    	 peliculaEnSala.setId(200);
 	    	 peliculaEnSala.setGenero("Genero");
-	    	 rooms1.put(idRoom, peliculaEnSala);
-	    	 
+	    	 rooms1.put(idRoom, peliculaEnSala); 
 	    	 //Preparo la Pelicula Nueva
-	    	 
 	    	 PeliculaModel peliculaNueva = new PeliculaModel();
 	    	 peliculaNueva.setNombre("PeliculaNueva");
 	    	 peliculaNueva.setId(201);
 	    	 peliculaNueva.setGenero("Genero");
 	    	 
-	    	 //when(_peliculaService.obtenerPelicula(dificultad)).thenReturn(peliculaNueva);
-	    	 
-	    	 
-             //when(_peliculaService.cambiarPelicula(idRoomNoEncontrado,dificultad)).thenReturn(peliculaNueva);
-             //PeliculaModel pelicula1 = _peliculaService.cambiarPelicula(idRoom,dificultad);
-             //assertEquals(pelicula1.getNombre(), peliculaNueva.getNombre() );
+
 	    	 assertFalse(rooms1.containsKey(idRoomNoEncontrado), "La sala debería no existir antes del test");
 
 	    	 
