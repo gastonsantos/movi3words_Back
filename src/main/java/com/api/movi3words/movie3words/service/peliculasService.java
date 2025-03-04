@@ -79,48 +79,50 @@ public class PeliculasService implements IPeliculaService {
 	    return pelicula2;
 	}
 	public String[] obtenerImagenesPelicula(int idPelicula) {
-	    
-	    String url = String.format("https://api.themoviedb.org/3/movie/%d/images?api_key=%s",
-	                               idPelicula, API_KEY);
+	    String url = String.format("https://api.themoviedb.org/3/movie/%d/images?api_key=%s", idPelicula, API_KEY);
 
 	    try {
-	      
-	  
+	        
 	        String response = restTemplate.getForObject(url, String.class);
-	        
-	        
+
+	       
 	        JSONObject jsonResponse = new JSONObject(response);
 
-	        
+	       
 	        if (!jsonResponse.has("backdrops") || jsonResponse.getJSONArray("backdrops").length() == 0) {
 	            System.out.println("No se encontraron imágenes para la película con ID: " + idPelicula);
 	            return new String[0]; 
 	        }
 
 	       
-	        JSONArray postersArray = jsonResponse.getJSONArray("backdrops");
+	        JSONArray backdropsArray = jsonResponse.getJSONArray("backdrops");
 	        List<String> imagenes = new ArrayList<>();
 
 	        
-	        int maxImages = Math.min(postersArray.length(), 5);
-	        
+	        int maxImages = Math.min(backdropsArray.length(), 3);
+
+	       
 	        for (int i = 0; i < maxImages; i++) {
-	            JSONObject imageObject = postersArray.getJSONObject(i);
+	            JSONObject imageObject = backdropsArray.getJSONObject(i);
 	            String imageUrl = "https://image.tmdb.org/t/p/w1280" + imageObject.optString("file_path", "");
-	            if (!imageUrl.equals("https://image.tmdb.org/t/p/w1280")) { // Evita imágenes vacías
+
+	            
+	            if (!imageUrl.equals("https://image.tmdb.org/t/p/w1280")) { 
 	                imagenes.add(imageUrl);
 	            }
 	        }
 
+	       
 	        System.out.println("Imágenes encontradas: " + imagenes);
 	        return imagenes.toArray(new String[0]);
 
 	    } catch (Exception e) {
+	        
 	        System.out.println("Error obteniendo imágenes: " + e.getMessage());
-	       // return new String[0];
 	        throw new ImagenesNoEncontradaExcepcion();
 	    }
 	}
+
 
 
     private String obtenerNombreGenero(int genreId) {
