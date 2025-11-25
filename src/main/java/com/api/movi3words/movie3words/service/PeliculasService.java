@@ -27,8 +27,11 @@ import com.api.movi3words.movie3words.model.RequestCreateRoom;
 import com.api.movi3words.movie3words.model.dtoAdivinarPelicula;
 import com.api.movi3words.movie3words.model.dtoMensaje;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ch.qos.logback.core.net.SyslogOutputStream;
 
 @Service
 public class PeliculasService implements IPeliculaService {
@@ -37,7 +40,7 @@ public class PeliculasService implements IPeliculaService {
      private static final String LANGUAGE = "es-MX";
      private final Random random = new Random(); 
 	 private Map<String, PeliculaModel> rooms1 = new HashMap<>();
-	 private  String apiUrl="https://api.cohere.ai/generate";
+	 private  String apiUrl="https://api.cohere.ai/v2/chat";
 	 private  String apiKey ="hlKdCGADTFU6Mc8zEwqdojIK6pet1cN16S3Fo0l0";
 	 private String promptPalabras1 = "A partir de la siguiente sinopsis, título y género de una película, genera exactamente 3 palabras clave separadas por comas. La respuesta debe contener únicamente las palabras, sin explicaciones ni comentarios adicionales.";
 	 private String promptPalabras ="Dado el título de una película, genera exactamente tres palabras clave separadas por comas. La respuesta debe contener solo las palabras clave, sin explicaciones ni comentarios adicionales, no uses generos de peliculas. Título de la película:";
@@ -256,52 +259,77 @@ public class PeliculasService implements IPeliculaService {
     	return companiaAleatoria;
     }
     
-    
     @Override
-	 public String obtenerTresPalabras(RequestCohere request) {
+    public String obtenerTresPalabras(RequestCohere request) {
 
-	       
-		 	String text = null;
-	        HttpHeaders headers = new HttpHeaders();
-	        headers.setContentType(MediaType.APPLICATION_JSON);
-	        headers.set("Authorization", "Bearer " + apiKey);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + apiKey);
 
-	        
-	        Map<String, Object> body = new HashMap<>();
-	        //body.put("prompt",  promptPalabras + " el Titulo es: "+request.getTitulo()+"el Género es: "+request.getGenero()+"la sinopsis: "+request.getSinopsis());
-	        body.put("prompt",  promptPalabras+request.getTitulo());
-	        body.put("model", "command-r-plus");  
-	        body.put("max_tokens", 20); 
-	        body.put("temperature", 0.5);
+        String titulo = request.getTitulo() != null ? request.getTitulo() : "";
+        String prompt = promptPalabras != null ? promptPalabras : "";
+        String mensaje = (prompt + " " + titulo).trim();
 
-	        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        if (mensaje.isBlank()) {
+            return "No hay mensaje para enviar a Cohere";
+        }
 
-	       
-	        ResponseEntity<String> response = restTemplate.exchange(
-	        		apiUrl,
-	                HttpMethod.POST,
-	                entity,
-	                String.class
-	        );
-	        
-	        
-	        ObjectMapper objectMapper = new ObjectMapper();
+        System.out.println("MENSAJE A COHERE: " + mensaje);
 
-	    
-	        	 try {
-					
-				        JsonNode root = objectMapper.readTree(response.getBody());
-				        text = root.get("text").asText();
-				} catch (JsonProcessingException e) {
-					
-					
-					e.printStackTrace();
-				}
-	        	
-	        	 String respuesta = text;
-	        
-	        return respuesta;
-	    }
+        // --- ARMAR BODY V2 CORRECTO ---
+        Map<String, Object> contentItem = new HashMap<>();
+        contentItem.put("type", "text");
+        contentItem.put("text", mensaje);
+
+        Map<String, Object> userMessage = new HashMap<>();
+        userMessage.put("role", "user");
+        userMessage.put("content", List.of(contentItem));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", "command-a-03-2025"); // modelo nuevo
+        body.put("messages", List.of(userMessage));
+        body.put("max_tokens", 20);
+        body.put("temperature", 0.5);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                apiUrl, // DEBE SER https://api.cohere.ai/v2/chat
+                HttpMethod.POST,
+                entity,
+                String.class
+        );
+        System.out.println("RAW RESPONSE COHERE: " + response.getBody());
+        // --- PARSEAR RESPUESTA ---
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = null;
+		try {
+			root = mapper.readTree(response.getBody());
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+        JsonNode contentNode = root.path("message").path("content");
+
+        if (contentNode.isArray() && contentNode.size() > 0) {
+            String palabras = contentNode.get(0).path("text").asText("");
+            System.out.println("Palabras " + palabras);
+            return palabras; // Esto devuelve: "Aventura, Naturaleza, Cultura"
+        }
+
+        return "";
+
+    }
+
+
+
+
+
+
     
     
     protected int devuelveCompania(Integer dificultad) {
