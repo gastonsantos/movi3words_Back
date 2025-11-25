@@ -46,6 +46,7 @@ public class PeliculasController {
 			return  _peliculaService.cambiarPelicula(IdRoom.getIdRoom(), IdRoom.getDificultad());
 		}
 	  
+	 
 	//En veremos
 	  
 	  @PostMapping(value="/obtenerPalabrasParaPelicula")
